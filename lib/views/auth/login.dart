@@ -18,7 +18,12 @@ class _LoginState extends State<Login> {
   final TextEditingController passController = TextEditingController(text: "");
 
   AuthController authController = Get.put(AuthController());
-
+@override
+void dispose(){
+  emailController.dispose();
+passController.dispose();
+  super.dispose();
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -23,5 +23,8 @@ class Routess {
       page: () => const EditProfile(),
       transition: Transition.leftToRightWithFade,
     ),
+    
+
+
   ];
 }

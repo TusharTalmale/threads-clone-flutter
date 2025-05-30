@@ -19,12 +19,7 @@ class CircleImage extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget avatar;
 
-    if (url != null && url!.isNotEmpty) {
-      avatar = CircleAvatar(
-        backgroundImage: NetworkImage(url!),
-        radius: radius,
-      );
-    } else if (file != null) {
+    if (file != null) {
       avatar = kIsWeb
           ? FutureBuilder<Uint8List>(
               future: file!.readAsBytes(),
@@ -45,7 +40,12 @@ class CircleImage extends StatelessWidget {
               backgroundImage: FileImage(io.File(file!.path)),
               radius: radius,
             );
-    } else {
+    } else if (url != null && url!.isNotEmpty) {
+      avatar = CircleAvatar(
+        backgroundImage: NetworkImage(url!),
+        radius: radius,
+      );
+    }  else {
       avatar = CircleAvatar(
         radius: radius,
         backgroundColor: Colors.grey.shade200,

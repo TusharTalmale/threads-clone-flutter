@@ -3,7 +3,6 @@ import 'package:form_validator/form_validator.dart';
 import 'package:get/get.dart';
 import 'package:thread_app/Route/route_namess.dart';
 import 'package:thread_app/controller/auth_controller.dart';
-import 'package:thread_app/utils/helper.dart';
 import 'package:thread_app/widgets/auth_input.dart';
 
 class Register extends StatefulWidget {
@@ -22,7 +21,14 @@ class _RegisterState extends State<Register> {
     text: "",
   );
   AuthController controller = Get.put(AuthController());
-
+@override
+void dispose(){
+  nameController.dispose();
+  emailController.dispose();
+passController.dispose();
+confirmPassController.dispose();
+  super.dispose();
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -155,7 +161,7 @@ class _RegisterState extends State<Register> {
                                 : () {
                                   if (_form.currentState!.validate()) {
                                     controller.register(
-                                      nameController.text.trim(),
+                                       nameController.text.trim(),
                                       emailController.text.trim(),
                                       confirmPassController.text.trim(),
                                     );

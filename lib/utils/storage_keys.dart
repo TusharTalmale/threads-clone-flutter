@@ -1,3 +1,4 @@
 class StorageKeys {
-  static String userSession = "userSession";
+  static const String userSession = 'user_session';
+  
 }
