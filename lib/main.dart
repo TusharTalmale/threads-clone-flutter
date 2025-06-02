@@ -10,6 +10,8 @@ import 'package:get_storage/get_storage.dart';
 import 'package:thread_app/Route/route_namess.dart';
 import 'package:thread_app/Services/storage_service.dart';
 import 'package:thread_app/controller/auth_controller.dart';
+import 'package:thread_app/controller/home_controller.dart';
+import 'package:thread_app/controller/notification_controller.dart';
 import 'package:thread_app/firebase_options.dart';
 import 'package:thread_app/theme/themedata.dart';
 import 'package:thread_app/Route/route.dart';
@@ -23,6 +25,8 @@ void main() async {
   await dotenv.load(fileName: ".env");
   await GetStorage.init();
   Get.put(AuthController());
+  Get.put(NotificationController());
+Get.put(HomeController());
 
 
   runApp(

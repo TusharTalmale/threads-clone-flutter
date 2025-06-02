@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:thread_app/views/home/home_page.dart';
+import 'package:thread_app/views/home/home_page_design.dart';
 import 'package:thread_app/views/profile/profile.dart';
 import 'package:thread_app/views/search/search.dart';
 import 'package:thread_app/views/threads/thread.dart';
@@ -13,10 +14,11 @@ class NavigationService extends GetxService {
   // all pages
   List<Widget> pages(){
     return [
-      const HomePage(),
+      //  HomePage(),
+      HomePageDesign(),
       const Search(),
-      const AddThread(),
-      const Notifications(),
+       AddThread(),
+       NotificationsScreen(),
       const Profile(),
     ];
   }
@@ -25,5 +27,10 @@ void updateIndex(int index){
   previousIndex.value = currentIndex.value;
   currentIndex.value = index;
 }
+//back to prev page
+void backToPrevPage(){
+  currentIndex.value = previousIndex.value;
+}
+
   
 }

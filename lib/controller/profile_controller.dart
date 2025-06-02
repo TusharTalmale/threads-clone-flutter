@@ -118,11 +118,10 @@ class ProfileController extends GetxController {
   }
 
   Future<void> fetchUserProfileData() async {
-    profileLoading.value = true; // Indicate that profile data is loading
+    profileLoading.value = true;
     try {
       final User? currentUser = _auth.currentUser;
       if (currentUser != null) {
-        // Fetch user data from Firestore 'users' collection
         final Map<String, dynamic>? profileData = await getUserProfile(
           currentUser.uid,
         );
@@ -142,7 +141,6 @@ class ProfileController extends GetxController {
               currentUser.photoURL ?? ''; // Use Auth photoURL if available
         }
       } else {
-        // Fallback for when no user is logged in (should ideally not happen in protected routes)
         userName.value = 'Guest';
         userDescription.value = 'Please log in to see your profile.';
         userAvatarUrl.value = '';
@@ -150,12 +148,11 @@ class ProfileController extends GetxController {
     } catch (e) {
       debugPrint("Failed to fetch profile data: $e");
       showSnackBar("Error", "Failed to load profile data: ${e.toString()}");
-      // Set default values in case of error
       userName.value = 'Error';
       userDescription.value = 'Could not load profile.';
       userAvatarUrl.value = '';
     } finally {
-      profileLoading.value = false; // Finished loading profile data
+      profileLoading.value = false;
     }
   }
 }

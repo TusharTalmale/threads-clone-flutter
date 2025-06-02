@@ -14,8 +14,6 @@ class AuthController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-
-
   Future<void> register(String name, String email, String password) async {
     try {
       registerLoading.value = true;
@@ -130,11 +128,10 @@ class AuthController extends GetxController {
     try {
       logoutLoading.value = true;
       await _auth.signOut();
-      await StorageService.clearUserSession(); 
+      await StorageService.clearUserSession();
 
       logoutLoading.value = false;
 
-           await StorageService.session.erase();
       await StorageService.session.erase();
 
       Get.offAllNamed(RouteNamess.login);

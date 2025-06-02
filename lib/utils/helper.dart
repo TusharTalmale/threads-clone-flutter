@@ -31,7 +31,7 @@ void showSnackBar(String title, String message) {
   );
 }
 
-void showCustomSnackBar({required String title, required String message}) {
+void showCustomSnackBar({required String title, required String message , bool isError =false}) {
   Get.snackbar(
     title,
     message,

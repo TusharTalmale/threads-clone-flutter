@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:thread_app/views/notification/notification_badge.dart';
 
 class Search extends StatefulWidget {
   const Search({super.key});
@@ -15,11 +16,14 @@ class _SearchState extends State<Search> {
       appBar: AppBar(
         title: const Text("Serch"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-            },
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.search),
+          //   onPressed: () {
+          //   },
+          // ),
+
+              NotificationBadge(),
+
         ],
       ),
       body: const Center(

@@ -1,10 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:thread_app/Route/route_namess.dart';
-import 'package:thread_app/controller/auth_controller.dart'; // Ensure this path is correct
 import 'package:thread_app/controller/profile_controller.dart'; // Ensure this path is correct
 import 'package:thread_app/utils/styles/button_style.dart'; // Ensure this path is correct
 import 'package:thread_app/views/profile/sidebar.dart';
+import 'package:thread_app/views/profile/threads_profile_view.dart';
 import 'package:thread_app/widgets/image_circle.dart'; // Ensure this path is correct
 
 class Profile extends StatefulWidget {
@@ -15,9 +16,7 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  
   final ProfileController profileController = Get.put(ProfileController());
-
 
   @override
   void initState() {
@@ -34,10 +33,11 @@ class _ProfileState extends State<Profile> {
       barrierColor: Colors.black.withOpacity(0.5), // Dim background
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) {
-       
         return Align(
           alignment: Alignment.centerRight,
-          child: buildRightSidebarContent(context), // Call the helper function for content
+          child: buildRightSidebarContent(
+            context,
+          ), // Call the helper function for content
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -71,7 +71,9 @@ class _ProfileState extends State<Profile> {
       ),
       body: Obx(() {
         if (profileController.profileLoading.value) {
-          return const Center(child: CircularProgressIndicator(color: Colors.white));
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
         }
 
         // Once data is loaded, display the profile content
@@ -88,14 +90,12 @@ class _ProfileState extends State<Profile> {
                     padding: const EdgeInsets.symmetric(horizontal: 15.0),
                     child: Column(
                       children: [
-                        // User Name, Description, and Avatar
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Display User Name from controller
                                 Text(
                                   profileController.userName.value,
                                   style: const TextStyle(
@@ -130,13 +130,14 @@ class _ProfileState extends State<Profile> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        // Action Buttons (Edit Profile, Shared Profile)
                         Row(
                           children: [
                             Expanded(
                               child: OutlinedButton(
                                 onPressed: () {
-                                  Get.toNamed(RouteNamess.editProfile)?.then((_) {
+                                  Get.toNamed(RouteNamess.editProfile)?.then((
+                                    _,
+                                  ) {
                                     profileController.fetchUserProfileData();
                                   });
                                 },
@@ -147,9 +148,7 @@ class _ProfileState extends State<Profile> {
                             const SizedBox(width: 20),
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () {
-                                  // Add share profile logic here
-                                },
+                                onPressed: () {},
                                 style: customOutlinestyle(),
                                 child: const Text(
                                   "Shared Profile",
@@ -163,15 +162,14 @@ class _ProfileState extends State<Profile> {
                     ),
                   ),
                 ),
-                // Tab Bar for "Threads" and "Replies"
                 SliverPersistentHeader(
                   floating: true,
                   pinned: true,
                   delegate: SliverAppBarDelegate(
                     const TabBar(
                       indicatorSize: TabBarIndicatorSize.tab,
-                      indicatorColor: Colors.white, // Color of the selected tab indicator
-                      labelColor: Colors.white, // Color of selected tab text
+                      indicatorColor: Colors.white,
+                      labelColor: Colors.white,
                       unselectedLabelColor: Color.fromARGB(255, 189, 12, 12),
                       tabs: [Tab(text: "Threads"), Tab(text: "Replies")],
                     ),
@@ -179,10 +177,17 @@ class _ProfileState extends State<Profile> {
                 ),
               ];
             },
-            // Content for the tabs
-            body: const TabBarView(
+            body: TabBarView(
               children: [
-                Center(child: Text("Threads content goes here")),
+                //  ThreadListWidget(
+                //             posts: profileController.userPosts,
+                //             isLoading: profileController.isLoadingPosts.value,
+                //             currentUserId: FirebaseAuth.instance.currentUser?.uid,
+                //           ),
+                ProfileThreadsView(
+                  viewingUserId: FirebaseAuth.instance.currentUser?.uid,
+                ),
+
                 Center(child: Text("Replies content goes here")),
               ],
             ),
@@ -193,7 +198,6 @@ class _ProfileState extends State<Profile> {
   }
 }
 
-// Custom SliverPersistentHeaderDelegate for the TabBar (no changes needed here)
 class SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar _tabBar;
   SliverAppBarDelegate(this._tabBar);
