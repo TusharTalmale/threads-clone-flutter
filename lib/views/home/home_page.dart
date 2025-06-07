@@ -14,12 +14,12 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Threads'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => homeController.fetchThreads(), 
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.refresh),
+        //     // onPressed: () => homeController.fetchThreads(), 
+        //   ),
+        // ],
       ),
       body: Obx(() {
         if (homeController.isLoading.value) {

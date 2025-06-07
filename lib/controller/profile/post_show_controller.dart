@@ -1,21 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:get/get.dart';
-import 'package:thread_app/model/combined_thread_post_model.dart'; // Ensure this model exists
+import 'package:thread_app/model/combined_thread_post_model.dart';
 import 'package:thread_app/model/threads_model.dart';
-import 'package:thread_app/model/user_model.dart'; // Ensure this model exists
+import 'package:thread_app/model/user_model.dart';
 
 class MyProfileControllere extends GetxController {
+  var loading = false.obs;
+  var saveloading = false.obs;
+  var profileLoading = true.obs;
+  var userThreadsLoading = true.obs;
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // RxList to hold the current user's posts, combining thread and user data
   final RxList<CombinedThreadPostModel> userPosts = <CombinedThreadPostModel>[].obs;
   final RxBool isLoadingPosts = true.obs;
   final RxString errorMessage = ''.obs;
 
- 
+  Rx<XFile?> image = Rx<XFile?>(null);
+  var uploadedPath = "";
+  RxString userName = ''.obs;
+  RxString userDescription = ''.obs;
+  RxString userAvatarUrl = ''.obs;
   final Rx<UserModel?> profileUser = Rx<UserModel?>(null);
   final RxBool isLoadingProfileUser = true.obs;
 
@@ -40,7 +49,7 @@ class MyProfileControllere extends GetxController {
 
   @override
   void onClose() {
-    _userPostsStream?.listen(null).cancel(); 
+    _userPostsStream?.listen(null).cancel();
     super.onClose();
   }
 
@@ -59,25 +68,23 @@ class MyProfileControllere extends GetxController {
       }
       isLoadingProfileUser.value = false;
 
-  
       _userPostsStream?.listen(null).cancel();
 
       _userPostsStream = _firestore
           .collection('threads')
           .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true) // Order by creation time
-          .snapshots(); // Listen for real-time updates
+          .orderBy('createdAt', descending: true)
+          .snapshots();
 
       userPosts.bindStream(_userPostsStream!.map((snapshot) {
         final List<CombinedThreadPostModel> fetchedPosts = [];
         for (var doc in snapshot.docs) {
           final thread = ThreadModel.fromFirestore(doc);
-          // Combine with the fetched user profile data
           if (profileUser.value != null) {
              fetchedPosts.add(CombinedThreadPostModel(
                 thread: thread,
                 user: profileUser.value!,
-                isLikedByCurrentUser: false, // This needs to be determined client-side or by another query if needed for initial load
+                isLikedByCurrentUser: false,
              ));
           }
         }
@@ -95,7 +102,6 @@ class MyProfileControllere extends GetxController {
     }
   }
 
-  // Method to edit an existing post
   Future<void> editPost(String threadId, String newContent, {List<String>? newImageUrls, String? newVideoUrl}) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -104,17 +110,15 @@ class MyProfileControllere extends GetxController {
     }
 
     try {
-      // First, verify that the current user is the owner of the post
       final threadDoc = await _firestore.collection('threads').doc(threadId).get();
       if (!threadDoc.exists || threadDoc.data()?['userId'] != currentUser.uid) {
         Get.snackbar('Error', 'You do not have permission to edit this post.');
         return;
       }
 
-      // Prepare update data
       Map<String, dynamic> updateData = {
         'content': newContent,
-        'updatedAt': FieldValue.serverTimestamp(), // Add an updatedAt field
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
       if (newImageUrls != null) {
@@ -123,21 +127,18 @@ class MyProfileControllere extends GetxController {
       if (newVideoUrl != null) {
         updateData['videoUrl'] = newVideoUrl;
       } else if (threadDoc.data()!.containsKey('videoUrl') && newVideoUrl == null) {
-         // If video was present and newVideoUrl is explicitly null, remove it
          updateData['videoUrl'] = FieldValue.delete();
       }
 
       await _firestore.collection('threads').doc(threadId).update(updateData);
 
       Get.snackbar('Success', 'Post updated successfully!', snackPosition: SnackPosition.BOTTOM);
-      // The stream listener will automatically update userPosts list
     } catch (e) {
       print("Error editing post: $e");
       Get.snackbar('Error', 'Failed to update post: $e', snackPosition: SnackPosition.BOTTOM);
     }
   }
 
-  // Method to delete an existing post
   Future<void> deletePost(String threadId) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -156,6 +157,7 @@ class MyProfileControllere extends GetxController {
       for (var doc in likesSnapshot.docs) {
         await doc.reference.delete();
       }
+      
       final repliesSnapshot = await _firestore.collection('threads').doc(threadId).collection('replies').get();
       for (var doc in repliesSnapshot.docs) {
         await doc.reference.delete();
@@ -169,14 +171,11 @@ class MyProfileControllere extends GetxController {
         final storage = FirebaseStorage.instance;
         for (String url in imageUrls) {
           try {
-            // Extract path from the full download URL
             final Uri uri = Uri.parse(url);
-            final String path = Uri.decodeComponent(uri.pathSegments.last); // Last segment is often the file path after /o/
+            final String path = Uri.decodeComponent(uri.pathSegments.last);
             await storage.ref(path).delete();
-            print('Deleted image from Storage: $path');
           } catch (e) {
             print('Error deleting image $url from Storage: $e');
-            // Continue even if one image fails
           }
         }
         if (videoUrl != null && videoUrl.isNotEmpty) {
@@ -184,34 +183,17 @@ class MyProfileControllere extends GetxController {
             final Uri uri = Uri.parse(videoUrl);
             final String path = Uri.decodeComponent(uri.pathSegments.last);
             await storage.ref(path).delete();
-            print('Deleted video from Storage: $path');
            } catch (e) {
              print('Error deleting video $videoUrl from Storage: $e');
            }
         }
       }
 
-      // 4. Finally, delete the thread document itself
       await _firestore.collection('threads').doc(threadId).delete();
-
       Get.snackbar('Success', 'Post and all associated data deleted!', snackPosition: SnackPosition.BOTTOM);
-      // The stream listener will automatically update userPosts list
     } catch (e) {
       print("Error deleting post: $e");
       Get.snackbar('Error', 'Failed to delete post: $e', snackPosition: SnackPosition.BOTTOM);
     }
-  }
-
-  // Method to remove a specific image URL during post editing (frontend utility)
-  void removeImageFromPost(String threadId, String imageUrl) {
-    // This method would typically be used in a post editing UI to remove an image
-    // from the list of images before calling `editPost`.
-    // The actual Firestore update happens in `editPost`.
-    // For reactive updates to the UI, you'd modify the temporary list in your UI's state management.
-    // If you want a direct database removal of one image, that's also possible:
-    // _firestore.collection('threads').doc(threadId).update({
-    //   'imageUrls': FieldValue.arrayRemove([imageUrl])
-    // });
-    // Be careful with this, as it immediately updates the database.
   }
 }

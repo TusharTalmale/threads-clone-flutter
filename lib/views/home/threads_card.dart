@@ -102,47 +102,47 @@ class ThreadsCard extends StatelessWidget {
                                             ? 0
                                             : 8.0,
                                   ),
-                                  child: Image.network(
-                                    url,
-                                    width:
-                                        context.width * 0.75, // Example width
-                                    fit:
-                                        BoxFit
-                                            .cover, // Cover the box, might crop
-                                    loadingBuilder: (
-                                      context,
-                                      child,
-                                      loadingProgress,
-                                    ) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        width: context.width * 0.75,
-                                        color: Colors.grey[200],
-                                        child: Center(
-                                          child: CircularProgressIndicator(
-                                            value:
-                                                loadingProgress
-                                                            .expectedTotalBytes !=
-                                                        null
-                                                    ? loadingProgress
-                                                            .cumulativeBytesLoaded /
-                                                        loadingProgress
-                                                            .expectedTotalBytes!
-                                                    : null,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              width: context.width * 0.75,
-                                              color: Colors.grey[200],
-                                              child: const Icon(
-                                                Icons.broken_image,
-                                                color: Colors.grey,
-                                              ),
+                                  child: GestureDetector(
+                                    onTap: () => Get.toNamed(RouteNamess.showImage , arguments: url),
+                                    child: Image.network(
+                                      url,
+                                      width:context.width * 0.60, // Example width
+                                      fit: BoxFit.cover, // Cover the box, might crop
+                                      loadingBuilder: (
+                                        context,
+                                        child,
+                                        loadingProgress,
+                                      ) {
+                                        if (loadingProgress == null) return child;
+                                        return Container(
+                                          width: context.width * 0.60,
+                                          color: Colors.grey[200],
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              value:
+                                                  loadingProgress
+                                                              .expectedTotalBytes !=
+                                                          null
+                                                      ? loadingProgress
+                                                              .cumulativeBytesLoaded /
+                                                          loadingProgress
+                                                              .expectedTotalBytes!
+                                                      : null,
                                             ),
+                                          ),
+                                        );
+                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                width: context.width * 0.75,
+                                                color: Colors.grey[200],
+                                                child: const Icon(
+                                                  Icons.broken_image,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                    ),
                                   ),
                                 );
                               },

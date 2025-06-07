@@ -1,86 +1,129 @@
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart'; // For debugPrint and showCustomSnackBar
+import 'package:flutter/material.dart';
 import 'package:thread_app/model/combined_thread_post_model.dart';
 import 'package:thread_app/model/threads_model.dart';
 import 'package:thread_app/model/user_model.dart';
-
-// Import your custom models
-
-import 'package:thread_app/utils/helper.dart'; // Assuming showCustomSnackBar is here
-
+import 'dart:async';
+import 'package:thread_app/utils/helper.dart'; 
 class HomeController extends GetxController {
-  // Reactive list to hold all fetched threads combined with user data
   final RxList<CombinedThreadPostModel> threads = <CombinedThreadPostModel>[].obs;
-
-  // Reactive boolean to indicate if data is currently being loaded
   final RxBool isLoading = true.obs;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance; 
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final Map<String, UserModel> _userCache = {};
   String? _currentUserId;
+
+  StreamSubscription? _threadsSubscription;
 
   @override
   void onInit() {
     super.onInit();
-        _currentUserId = _auth.currentUser?.uid;
-_auth.authStateChanges().listen((User? user) {
-      _currentUserId = user?.uid;
-      // You might want to re-fetch threads if the user logs in/out
-      // or if the like status depends heavily on the current user.
-      // For now, we'll rely on the manual update in toggleLike.
-    });
-    fetchThreads();
+    _setupAuthAndThreadListener();
   }
 
-  // Method to fetch all threads and their respective user data
-  Future<void> fetchThreads() async {
-    isLoading.value = true; // Set loading state to true
-    threads.clear(); // Clear existing threads before fetching new ones
+  @override
+  void onClose() {
+    _threadsSubscription?.cancel(); // Cancel the subscription when the controller is closed
+    super.onClose();
+  }
 
-    try {
-      // 1. Fetch all thread documents from the 'threads' collection
-      // Order by creation time, newest first
-      final QuerySnapshot threadSnapshot = await _firestore
-          .collection('threads')
-          .orderBy('createdAt', descending: true)
-          .get();
+  
+  void _setupAuthAndThreadListener() {
+    _auth.authStateChanges().listen((User? user) {
+      _currentUserId = user?.uid;
+      if (user != null) {
+        _initThreadsStream();
+      } else {
+        _threadsSubscription?.cancel();
+        threads.clear();
+        isLoading.value = false;
+      }
+    });
+  }
 
-      // List to hold futures for fetching user data concurrently
-      final List<Future<void>> fetchFutures = [];
+  /// Initializes or reinitializes the real-time stream for threads.
+  /// It listens for changes in the 'threads' collection and updates the UI.
+  void _initThreadsStream() {
+    _threadsSubscription?.cancel(); // Cancel any existing subscription
+    isLoading.value = true;
+    threads.clear(); 
+    _threadsSubscription = _firestore
+        .collection('threads')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+      (QuerySnapshot snapshot) async {
+        debugPrint(
+            'Real-time update received: ${snapshot.docChanges.length} changes');
+        try {
+          // Process changes efficiently
+          final List<CombinedThreadPostModel> newThreads = [];
+          final List<Future<void>> processingFutures = [];
 
-      // Loop through each thread document
-      for (final doc in threadSnapshot.docs) {
-        final thread = ThreadModel.fromFirestore(doc);
-        final String userId = thread.userId;
-        final String threadId = thread.threadId;
-        fetchFutures.add(() async {
-          UserModel? user;
-          if (_userCache.containsKey(userId)) {
-            user = _userCache[userId];
-            debugPrint('User data for $userId found in cache.');
-          } else {
-            // If not in cache, fetch user data from 'users' collection
-            final DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
-            if (userDoc.exists) {
-              user = UserModel.fromFirestore(userDoc);
-              _userCache[userId] = user!; // Cache the fetched user data
-              debugPrint('User data for $userId fetched and cached.');
-            } else {
-              // Handle case where user profile might not exist (e.g., deleted user)
-              debugPrint('User profile for $userId not found. Using default.');
-              user = UserModel(
-                userId: userId,
-                name: 'Deleted User', // Default name for missing user
-                email: 'N/A',
-                avatar_url: '', // Default empty avatar (using fixed field name)
-              );
-            }
+          // Create a temporary map for efficient lookup of existing threads
+          final Map<String, CombinedThreadPostModel> currentThreadsMap = {
+            for (var t in threads) t.thread.threadId: t,
+          };
+
+          for (final change in snapshot.docChanges) {
+            processingFutures.add(_processThreadChange(change, newThreads, currentThreadsMap));
           }
-              bool hasLiked = false;
-          if (_currentUserId != null) {
+
+          await Future.wait(processingFutures);
+
+          // Update the observable list. Ensure sorting if processing changes leads to out-of-order additions.
+          // Since Firestore query is ordered, ensure the final list is also ordered.
+          // If you always add to `newThreads` and then `assignAll`, it should maintain order.
+          threads.assignAll(newThreads.toList()..sort((a, b) => b.thread.createdAt.compareTo(a.thread.createdAt)));
+          isLoading.value = false;
+          showCustomSnackBar(title: 'Success', message: 'Threads updated in real-time.');
+        } catch (e) {
+          isLoading.value = false;
+          debugPrint('Error processing thread updates: $e');
+          showCustomSnackBar(
+              title: 'Error', message: 'Failed to update threads: $e');
+        }
+      },
+      onError: (error) {
+        isLoading.value = false;
+        debugPrint('Thread stream error: $error');
+        showCustomSnackBar(
+            title: 'Error', message: 'Real-time thread stream failed: $error');
+      },
+    );
+  }
+
+  /// Processes individual document changes from the Firestore stream.
+  /// It handles added, modified, and removed threads, including fetching user data
+  /// and determining like status.
+  Future<void> _processThreadChange(
+    DocumentChange change,
+    List<CombinedThreadPostModel> updatedThreadsList, // Pass list to modify
+    Map<String, CombinedThreadPostModel> currentThreadsMap, // Pass map for quick lookups
+  ) async {
+    final thread = ThreadModel.fromFirestore(change.doc);
+    final String userId = thread.userId;
+    final String threadId = thread.threadId;
+
+    switch (change.type) {
+      case DocumentChangeType.added:
+      case DocumentChangeType.modified:
+        // Fetch user data (from cache or Firestore)
+        UserModel? user = await _getUserData(userId);
+        user ??= UserModel(
+          userId: userId,
+          name: 'Unknown User',
+          email: 'N/A',
+          avatar_url: '',
+        );
+
+        // Check like status for the current user
+        bool hasLiked = false;
+        if (_currentUserId != null) {
+          try {
             final likeDoc = await _firestore
                 .collection('threads')
                 .doc(threadId)
@@ -88,43 +131,93 @@ _auth.authStateChanges().listen((User? user) {
                 .doc(_currentUserId)
                 .get();
             hasLiked = likeDoc.exists;
+          } catch (e) {
+            debugPrint('Error checking like status for thread $threadId: $e');
           }
+        }
 
+        final combinedThread = CombinedThreadPostModel(
+          thread: thread,
+          user: user,
+          isLikedByCurrentUser: hasLiked,
+        );
 
-          // If both thread and user data are available, combine and add to threads list
-          if (user != null) {
-            threads.add(CombinedThreadPostModel(thread: thread, user: user,  isLikedByCurrentUser: hasLiked,));
+        // Add or update in the temporary list based on type
+        if (change.type == DocumentChangeType.added) {
+          debugPrint('Thread added: ${thread.threadId}');
+          updatedThreadsList.add(combinedThread);
+        } else {
+          debugPrint('Thread modified: ${thread.threadId}');
+          final index = updatedThreadsList.indexWhere((t) => t.thread.threadId == threadId);
+          if (index != -1) {
+            updatedThreadsList[index] = combinedThread;
+          } else {
+            // This case might happen if a modified document was not yet in the list
+            // (e.g., initial load after clearing, or a very fast modification after add)
+            updatedThreadsList.add(combinedThread);
           }
-        }()); // Call the async function immediately
-      }
-
-      // Wait for all user data fetching operations to complete
-      await Future.wait(fetchFutures);
-
-      debugPrint('Fetched ${threads.length} threads successfully.');
-      showCustomSnackBar(title: 'Success', message: 'Threads loaded.');
-
-    } on FirebaseException catch (e) {
-      debugPrint('Firebase Error fetching threads: ${e.code} - ${e.message}');
-      showCustomSnackBar(title: 'Error', message: 'Failed to load threads: ${e.message}');
-    } catch (e) {
-      debugPrint('General Error fetching threads: $e');
-      showCustomSnackBar(title: 'Error', message: 'An unexpected error occurred: $e');
-    } finally {
-      isLoading.value = false; // Set loading state to false regardless of success or failure
+        }
+        break;
+      case DocumentChangeType.removed:
+        debugPrint('Thread removed: ${thread.threadId}');
+        // Remove from the temporary list
+        updatedThreadsList.removeWhere((t) => t.thread.threadId == threadId);
+        break;
     }
   }
 
-  
+  /// Refreshes the list of threads by reinitializing the stream.
+  /// This can be used for a pull-to-refresh mechanism.
+  Future<void> refreshThreads() async {
+    try {
+      isLoading.value = true;
+      threads.clear(); // Clear current data
+      _initThreadsStream(); // Force a fresh load by re-initializing the stream
+    } catch (e) {
+      isLoading.value = false;
+      debugPrint('Refresh error: $e');
+      showCustomSnackBar(title: 'Error', message: 'Failed to refresh threads: $e');
+    }
+  }
 
+  /// Helper method to fetch user data from cache or Firestore.
+  /// Caches the user data upon successful fetch.
+  Future<UserModel?> _getUserData(String userId) async {
+    if (_userCache.containsKey(userId)) {
+      debugPrint('User data for $userId found in cache.');
+      return _userCache[userId];
+    } else {
+      try {
+        final DocumentSnapshot userDoc =
+            await _firestore.collection('users').doc(userId).get();
+        if (userDoc.exists) {
+          final user = UserModel.fromFirestore(userDoc);
+          _userCache[userId] = user; // Cache the fetched user data
+          debugPrint('User data for $userId fetched and cached.');
+          return user;
+        } else {
+          debugPrint('User profile for $userId not found.');
+          return null;
+        }
+      } catch (e) {
+        debugPrint('Error fetching user data for $userId: $e');
+        return null;
+      }
+    }
+  }
+
+  /// Increases the reply count for a given thread.
   Future<void> increaseReplyCount(String threadID) async {
     try {
       await _firestore.collection('threads').doc(threadID).update({
         'repliesCount': FieldValue.increment(1),
       });
       debugPrint('Reply count for thread $threadID increased successfully!');
+      // No need to manually update `threads` RxList here, as `_initThreadsStream` will
+      // automatically pick up the change via the real-time listener.
     } on FirebaseException catch (e) {
-      debugPrint('Firebase Error increasing reply count: ${e.code} - ${e.message}');
+      debugPrint(
+          'Firebase Error increasing reply count: ${e.code} - ${e.message}');
       showSnackBar('Update Error', 'Failed to update reply count: ${e.message}');
     } catch (e) {
       debugPrint('General Error increasing reply count: $e');
@@ -132,14 +225,18 @@ _auth.authStateChanges().listen((User? user) {
     }
   }
 
+  /// Decreases the reply count for a given thread.
   Future<void> decreaseReplyCount(String threadID) async {
     try {
       await _firestore.collection('threads').doc(threadID).update({
         'repliesCount': FieldValue.increment(-1),
       });
       debugPrint('Reply count for thread $threadID decreased successfully!');
+      // No need to manually update `threads` RxList here, as `_initThreadsStream` will
+      // automatically pick up the change via the real-time listener.
     } on FirebaseException catch (e) {
-      debugPrint('Firebase Error decreasing reply count: ${e.code} - ${e.message}');
+      debugPrint(
+          'Firebase Error decreasing reply count: ${e.code} - ${e.message}');
       showSnackBar('Update Error', 'Failed to update reply count: ${e.message}');
     } catch (e) {
       debugPrint('General Error decreasing reply count: $e');
@@ -147,8 +244,8 @@ _auth.authStateChanges().listen((User? user) {
     }
   }
 
-  /// Toggles the like status of a thread for the current user.
-  /// If the user has already liked the thread, it unlikes it; otherwise, it likes it.
+  /// Toggles the like status for a thread for the current user.
+  /// It updates both the 'likes' subcollection and the 'likesCount' on the thread document.
   Future<void> toggleLike(String threadID) async {
     if (_currentUserId == null) {
       showSnackBar('Error', 'You must be logged in to like a thread.');
@@ -160,50 +257,51 @@ _auth.authStateChanges().listen((User? user) {
     final DocumentReference likeRef = threadRef.collection('likes').doc(userId);
 
     try {
-      final DocumentSnapshot likeDoc = await likeRef.get();
-      bool wasLiked = likeDoc.exists;
-
+      // Use a transaction for atomic updates to avoid race conditions
       await _firestore.runTransaction((transaction) async {
+        final DocumentSnapshot likeDoc = await transaction.get(likeRef);
+        bool wasLiked = likeDoc.exists;
+
         if (wasLiked) {
           transaction.delete(likeRef);
           transaction.update(threadRef, {
             'likesCount': FieldValue.increment(-1),
           });
         } else {
-          transaction.set(likeRef, {
-            'timestamp': FieldValue.serverTimestamp(),
-          });
+          transaction.set(likeRef, {'timestamp': FieldValue.serverTimestamp()});
           transaction.update(threadRef, {
             'likesCount': FieldValue.increment(1),
           });
         }
       });
-        // --- Reactive UI Update ---
-      // Find the specific thread in the RxList and update its properties
-      final int index = threads.indexWhere((element) => element.thread.threadId == threadID);
+
+      // Optimistic UI update: Find the specific thread in the RxList and update its properties.
+      // This provides immediate feedback to the user without waiting for the next stream update.
+      final int index = threads.indexWhere(
+        (element) => element.thread.threadId == threadID,
+      );
       if (index != -1) {
         final currentThread = threads[index];
-        final newLikesCount = wasLiked ? currentThread.thread.likesCount - 1 : currentThread.thread.likesCount + 1;
+        final newLikesCount = currentThread.isLikedByCurrentUser
+            ? currentThread.thread.likesCount - 1
+            : currentThread.thread.likesCount + 1;
 
-        // Create a new ThreadModel with updated likesCount
         final updatedThreadModel = currentThread.thread.copyWith(
           likesCount: newLikesCount,
         );
 
-        // Update the CombinedThreadPostModel in the list
         threads[index] = currentThread.copyWith(
           thread: updatedThreadModel,
-          isLikedByCurrentUser: !wasLiked, // Toggle the like status
+          isLikedByCurrentUser: !currentThread.isLikedByCurrentUser, // Toggle the like status
         );
       }
-      // --- End Reactive UI Update ---
 
-      if (wasLiked) {
-        showCustomSnackBar(title: 'Unliked', message: 'Thread unliked!');
-        debugPrint('User $userId unliked thread $threadID');
-      } else {
+      if (threads[index].isLikedByCurrentUser) {
         showCustomSnackBar(title: 'Liked', message: 'Thread liked!');
         debugPrint('User $userId liked thread $threadID');
+      } else {
+        showCustomSnackBar(title: 'Unliked', message: 'Thread unliked!');
+        debugPrint('User $userId unliked thread $threadID');
       }
     } on FirebaseException catch (e) {
       debugPrint('Firebase Error toggling like: ${e.code} - ${e.message}');
@@ -213,5 +311,4 @@ _auth.authStateChanges().listen((User? user) {
       showSnackBar('Like/Unlike Failed', 'An unexpected error occurred: $e');
     }
   }
-
 }

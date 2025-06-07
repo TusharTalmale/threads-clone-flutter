@@ -52,19 +52,7 @@ class _ProfileThreadsViewState extends State<ProfileThreadsView> {
             isMyPost: isMyPost,
             onEdit: isMyPost ? () => _showEditDialog(context, post) : null,
             onDelete: isMyPost ? () => _confirmDelete(context, post) : null,
-            onLike: () {
-              // TODO: Implement like logic
-              Get.snackbar('Like Action', 'Tapped like on post by ${post.user.name}');
-            },
-            onComment: () {
-              Get.snackbar('Comment Action', 'Tapped comment on post by ${post.user.name}');
-            },
-            onShare: () {
-              Get.snackbar('Share Action', 'Tapped share on post by ${post.user.name}');
-            },
-            onReport: isMyPost ? null : () { 
-              Get.snackbar('Report Action', 'Tapped report on post by ${post.user.name}');
-            },
+         
           );
         },
       );

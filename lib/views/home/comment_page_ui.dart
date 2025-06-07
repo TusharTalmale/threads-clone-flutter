@@ -14,11 +14,9 @@ class CommentPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Call fetchCommentsForThread in build, or use onInit() in controller
-    // If using onInit, ensure the threadId is passed before controller initialization.
-    // For simplicity here, we'll call it once the page loads.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      commentController.listenToCommentsForThread(threadId);
+      commentController.fetchCurrentUserReplies();
     });
 
     return Scaffold(

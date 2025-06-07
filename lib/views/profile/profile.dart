@@ -2,11 +2,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:thread_app/Route/route_namess.dart';
-import 'package:thread_app/controller/profile_controller.dart'; // Ensure this path is correct
-import 'package:thread_app/utils/styles/button_style.dart'; // Ensure this path is correct
+import 'package:thread_app/controller/profile_controller.dart';
+import 'package:thread_app/controller/reply_controller.dart';
+import 'package:thread_app/utils/styles/button_style.dart';
 import 'package:thread_app/views/profile/sidebar.dart';
 import 'package:thread_app/views/profile/threads_profile_view.dart';
-import 'package:thread_app/widgets/image_circle.dart'; // Ensure this path is correct
+import 'package:thread_app/widgets/image_circle.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -17,55 +18,127 @@ class Profile extends StatefulWidget {
 
 class _ProfileState extends State<Profile> {
   final ProfileController profileController = Get.put(ProfileController());
+  final CommentController commentController = Get.put(CommentController());
 
   @override
   void initState() {
     super.initState();
-    profileController.fetchUserProfileData();
+    _loadData();
   }
 
-  // --- Function to show the Right Sidebar ---
+  Future<void> _loadData() async {
+    await profileController.fetchUserProfileData();
+    if (FirebaseAuth.instance.currentUser?.uid != null) {
+      commentController.fetchCurrentUserReplies();
+      commentController.fetchRepliesOnMyPosts();
+    }
+  }
+
   void _showRightSidebar() {
     showGeneralDialog(
       context: context,
       barrierLabel: "Sidebar",
-      barrierDismissible: true, // Dismiss when tapping outside
-      barrierColor: Colors.black.withOpacity(0.5), // Dim background
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.5),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) {
         return Align(
           alignment: Alignment.centerRight,
-          child: buildRightSidebarContent(
-            context,
-          ), // Call the helper function for content
+          child: buildRightSidebarContent(context),
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
-        // Slide animation from right
         final curvedValue = Curves.easeInOut.transform(animation.value);
         return Transform.translate(
           offset: Offset(
             MediaQuery.of(context).size.width * (1 - curvedValue),
             0,
           ),
-          child: child, // The child here is the result of pageBuilder
+          child: child,
         );
       },
     );
+  }
+
+  Widget _buildRepliesTab() {
+    return Obx(() {
+      if (commentController.isLoadingCurrentUserReplies.value || 
+          commentController.isLoadingRepliesOnMyPosts.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      return DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            TabBar(
+              tabs: const [
+                Tab(text: "Your Replies"),
+                Tab(text: "Replies to You"),
+              ],
+              indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.grey,
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // Your Replies Tab
+                  ListView.builder(
+                    itemCount: commentController.currentUserReplies.length,
+                    itemBuilder: (context, index) {
+                      final reply = commentController.currentUserReplies[index];
+                      return ListTile(
+                        leading: CircleImage(
+                          radius: 20,
+                          url: reply.user.avatar_url,
+                        ),
+                        title: Text(reply.comment.content),
+                        subtitle: Text(
+                          'Replying to ${reply.comment.threadId}',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      );
+                    },
+                  ),
+                  
+                  // Replies to You Tab
+                  ListView.builder(
+                    itemCount: commentController.repliesOnMyPosts.length,
+                    itemBuilder: (context, index) {
+                      final reply = commentController.repliesOnMyPosts[index];
+                      return ListTile(
+                        leading: CircleImage(
+                          radius: 20,
+                          url: reply.user.avatar_url,
+                        ),
+                        title: Text(reply.user.name),
+                        subtitle: Text(
+                          reply.comment.content,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Icon(Icons.language), // Placeholder icon
+        title: const Icon(Icons.language),
         centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.sort),
-            onPressed: () {
-              _showRightSidebar();
-            },
+            onPressed: _showRightSidebar,
           ),
         ],
       ),
@@ -76,14 +149,13 @@ class _ProfileState extends State<Profile> {
           );
         }
 
-        // Once data is loaded, display the profile content
         return DefaultTabController(
           length: 2,
           child: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return <Widget>[
                 SliverAppBar(
-                  expandedHeight: 180, // Height when fully expanded
+                  expandedHeight: 180,
                   collapsedHeight: 160,
                   automaticallyImplyLeading: false,
                   flexibleSpace: Padding(
@@ -104,7 +176,6 @@ class _ProfileState extends State<Profile> {
                                   ),
                                 ),
                                 const SizedBox(height: 5),
-
                                 SizedBox(
                                   width: context.width * 0.60,
                                   child: Text(
@@ -135,9 +206,7 @@ class _ProfileState extends State<Profile> {
                             Expanded(
                               child: OutlinedButton(
                                 onPressed: () {
-                                  Get.toNamed(RouteNamess.editProfile)?.then((
-                                    _,
-                                  ) {
+                                  Get.toNamed(RouteNamess.editProfile)?.then((_) {
                                     profileController.fetchUserProfileData();
                                   });
                                 },
@@ -170,7 +239,7 @@ class _ProfileState extends State<Profile> {
                       indicatorSize: TabBarIndicatorSize.tab,
                       indicatorColor: Colors.white,
                       labelColor: Colors.white,
-                      unselectedLabelColor: Color.fromARGB(255, 189, 12, 12),
+                      unselectedLabelColor: Colors.grey,
                       tabs: [Tab(text: "Threads"), Tab(text: "Replies")],
                     ),
                   ),
@@ -179,16 +248,10 @@ class _ProfileState extends State<Profile> {
             },
             body: TabBarView(
               children: [
-                //  ThreadListWidget(
-                //             posts: profileController.userPosts,
-                //             isLoading: profileController.isLoadingPosts.value,
-                //             currentUserId: FirebaseAuth.instance.currentUser?.uid,
-                //           ),
                 ProfileThreadsView(
                   viewingUserId: FirebaseAuth.instance.currentUser?.uid,
                 ),
-
-                Center(child: Text("Replies content goes here")),
+                _buildRepliesTab(),
               ],
             ),
           ),

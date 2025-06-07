@@ -138,7 +138,7 @@ class ProfileController extends GetxController {
           userName.value = currentUser.displayName ?? 'No Name';
           userDescription.value = 'No description yet.';
           userAvatarUrl.value =
-              currentUser.photoURL ?? ''; // Use Auth photoURL if available
+              currentUser.photoURL ?? ''; 
         }
       } else {
         userName.value = 'Guest';

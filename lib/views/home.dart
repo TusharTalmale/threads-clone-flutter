@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:thread_app/Services/navigation_service.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:thread_app/views/notification/notification_badge.dart';
 
 class Home extends StatelessWidget {
   Home({super.key});
@@ -33,9 +34,10 @@ onDestinationSelected: (value) => navigationService.updateIndex(value),
               selectedIcon: Icon(CupertinoIcons.add_circled_solid),
             ),
             NavigationDestination(
-              icon: Icon(Icons.notification_add_outlined),
+              icon: NotificationBadge(),
               label: "Notification",
-              selectedIcon: Icon(Icons.notification_add),
+              selectedIcon: Icon(Icons.favorite),
+            
             ),
             NavigationDestination(
               icon: Icon(Icons.person_2_outlined),

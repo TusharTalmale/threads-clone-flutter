@@ -14,10 +14,11 @@ class NotificationBadge extends StatelessWidget {
       final count = controller.unreadCount.value;
       return Stack(
         children: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () => Get.to(() => const NotificationsScreen()),
+          Icon(
+            (Icons.favorite_outline),
+            // onPressed: () => Get.to(() => const NotificationsScreen()),
           ),
+
           if (count > 0)
             Positioned(
               right: 8,

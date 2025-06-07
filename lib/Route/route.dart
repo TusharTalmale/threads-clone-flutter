@@ -6,6 +6,8 @@ import 'package:thread_app/views/auth/register.dart';
 import 'package:thread_app/views/home.dart';
 import 'package:thread_app/views/home/comment_page_ui.dart';
 import 'package:thread_app/views/profile/edit_profile.dart';
+import 'package:thread_app/views/profile/user_profile_page.dart';
+import 'package:thread_app/widgets/image_page.dart';
 
 class Routess {
   static final pages = [
@@ -37,6 +39,17 @@ class Routess {
       page: () =>  CommentPage(),
       transition: Transition.downToUp,
     ),
+      
+   GetPage(
+      name: RouteNamess.showImage,
+      page: () =>  ShowImage(),
+      transition: Transition.downToUp,
+    ),
 
+   GetPage(
+      name: RouteNamess.showUserprofile,
+      page: () => ShowProfile(),
+      transition: Transition.downToUp,
+    ),
   ];
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:thread_app/views/home/home_page.dart';
 import 'package:thread_app/views/home/home_page_design.dart';
+import 'package:thread_app/views/notification/notification_badge.dart';
 import 'package:thread_app/views/profile/profile.dart';
 import 'package:thread_app/views/search/search.dart';
 import 'package:thread_app/views/threads/thread.dart';
@@ -19,6 +20,8 @@ class NavigationService extends GetxService {
       const Search(),
        AddThread(),
        NotificationsScreen(),
+                    // NotificationBadge(),
+
       const Profile(),
     ];
   }
