@@ -11,7 +11,7 @@ import 'package:thread_app/widgets/image_circle.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class ReplyPage extends StatefulWidget {
-  final CombinedThreadPostModel post = Get.arguments as CombinedThreadPostModel;
+  final CombinedThreadPostModel post = Get.arguments ;
 
   ReplyPage({super.key});
 
@@ -90,7 +90,7 @@ class _ReplyPageState extends State<ReplyPage> {
               return TextButton(
                 onPressed: controller.commentTextController.text.isNotEmpty
 
-                    ? () => _addComment
+                    ?  _addComment
                     : null,
                 style: TextButton.styleFrom(
                   foregroundColor: threadController.canPost
@@ -103,7 +103,6 @@ class _ReplyPageState extends State<ReplyPage> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: controller.commentTextController.text.isNotEmpty
-
                         ? Colors.blueAccent
                         : Colors.grey,
                   ),

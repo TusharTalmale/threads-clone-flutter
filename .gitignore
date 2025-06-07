@@ -48,3 +48,11 @@ app.*.map.json
 notes
 /lib/firebase_options.dart
 firebase.json
+.firebaserc
+/functions/node_modules/
+/functions/lib/
+/functions/dist/
+firebase-debug.log
+*.json
+/keys/
+/credentials/

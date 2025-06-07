@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:thread_app/Route/route_namess.dart';
+import 'package:thread_app/controller/reply_controller.dart';
 import 'dart:async'; // Required for Timer
 
 import 'package:thread_app/controller/search_controller.dart';
+import 'package:thread_app/model/combined_thread_post_model.dart';
 import 'package:thread_app/views/profile/user_profile_page.dart';
 
 import 'package:thread_app/views/search/search_input.dart';
 import 'package:thread_app/widgets/image_circle.dart';
 // Ensure these imports are correct for your project structure
-
-
 
 class Search extends StatefulWidget {
   const Search({super.key});
@@ -21,9 +21,13 @@ class Search extends StatefulWidget {
 
 class _SearchState extends State<Search> {
   final SearchedController searchController = Get.put(SearchedController());
-  final TextEditingController textEditingController = TextEditingController(text: '');
+  final commentController = Get.put(CommentController());
 
-  Timer? _debounce; 
+  final TextEditingController textEditingController = TextEditingController(
+    text: '',
+  );
+
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -33,7 +37,7 @@ class _SearchState extends State<Search> {
       if (query.isEmpty) {
         searchController.searchedUsers.clear();
         searchController.searchedThreads.clear();
-        _debounce?.cancel(); 
+        _debounce?.cancel();
       } else {
         if (_debounce?.isActive ?? false) _debounce!.cancel();
         _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -45,7 +49,7 @@ class _SearchState extends State<Search> {
 
   @override
   void dispose() {
-    _debounce?.cancel(); 
+    _debounce?.cancel();
     textEditingController.dispose();
     super.dispose();
   }
@@ -55,9 +59,7 @@ class _SearchState extends State<Search> {
       searchController.searchedUsers.clear();
       searchController.searchedThreads.clear();
     }
-  
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +76,14 @@ class _SearchState extends State<Search> {
             expandedHeight: GetPlatform.isIOS ? 110 : 105,
             collapsedHeight: GetPlatform.isIOS ? 90 : 80,
             flexibleSpace: Padding(
-              padding: EdgeInsets.only(top: GetPlatform.isIOS ? 105 : 100, left: 10, right: 10),
+              padding: EdgeInsets.only(
+                top: GetPlatform.isIOS ? 105 : 100,
+                left: 10,
+                right: 10,
+              ),
               child: SearchInput(
                 controller: textEditingController,
-                callback: _onSearch, 
+                callback: _onSearch,
               ),
             ),
           ),
@@ -101,7 +107,8 @@ class _SearchState extends State<Search> {
                 ),
               );
             } else {
-              if (searchController.searchedUsers.value.isEmpty && searchController.searchedThreads.value.isEmpty) {
+              if (searchController.searchedUsers.value.isEmpty &&
+                  searchController.searchedThreads.value.isEmpty) {
                 return const SliverFillRemaining(
                   child: Center(
                     child: Text(
@@ -111,7 +118,7 @@ class _SearchState extends State<Search> {
                   ),
                 );
               }
-              return _buildSearchResults();
+              return _buildSearchResults(commentController);
             }
           }),
         ],
@@ -119,74 +126,79 @@ class _SearchState extends State<Search> {
     );
   }
 
-  Widget _buildSearchResults() {
+  Widget _buildSearchResults(CommentController commentController) {
     return SliverList(
-      delegate: SliverChildListDelegate(
-        [
-          if (searchController.searchedUsers.value.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Text(
-                'Users',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: searchController.searchedUsers.value.length, 
-            itemBuilder: (context, index) {
-              final user = searchController.searchedUsers.value[index];
-              return ListTile(
-                leading: CircleImage( url: user.avatar_url,  ),
-                title: Text(user.name),
-                subtitle: Text(user.email),
-                onTap: () {
-                  Get.toNamed(RouteNamess.showUserprofile , arguments: user.userId);
-                },
-              );
-            },
+      delegate: SliverChildListDelegate([
+        if (searchController.searchedUsers.value.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Text('Users', style: Theme.of(context).textTheme.titleLarge),
           ),
-       
-          if (searchController.searchedThreads.value.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Text(
-                'Threads',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: searchController.searchedUsers.value.length,
+          itemBuilder: (context, index) {
+            final user = searchController.searchedUsers.value[index];
+            return ListTile(
+              leading: CircleImage(url: user.avatar_url),
+              title: Text(user.name),
+              subtitle: Text(user.email),
+              onTap: () {
+                Get.toNamed(
+                  RouteNamess.showUserprofile,
+                  arguments: user.userId,
+                );
+              },
+            );
+          },
+        ),
+
+        if (searchController.searchedThreads.value.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Text(
+              'Threads',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: searchController.searchedThreads.value.length, // CORRECT: Accessing .value for length
-            itemBuilder: (context, index) {
-              final thread = searchController.searchedThreads.value[index]; // CORRECT: Accessing .value for element
-              return ListTile(
-                leading: thread.imageUrls.isNotEmpty
-                    ? Image.network(
+          ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: searchController.searchedThreads.value.length,
+          itemBuilder: (context, index) {
+            final thread =
+                searchController
+                    .searchedThreads
+                    .value[index];
+            return ListTile(
+              leading:
+                  thread.imageUrls.isNotEmpty
+                      ? Image.network(
                         thread.imageUrls.first,
                         width: 50,
                         height: 50,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported, size: 50), 
+                        errorBuilder:
+                            (context, error, stackTrace) =>
+                                const Icon(Icons.image_not_supported, size: 50),
                       )
-                    : const Icon(Icons.text_fields, size: 50), 
-                title: Text(thread.content.length > 50
+                      : const Icon(Icons.text_fields, size: 50),
+              title: Text(
+                thread.content.length > 50
                     ? '${thread.content.substring(0, 50)}...'
-                    : thread.content),
-                subtitle: Text('Replies: ${thread.repliesCount}'),
-                onTap: () {
-                  // Get.to(() => ThreadDetailView(threadId: thread.threadId));
-                    Get.toNamed(RouteNamess.comments, arguments: thread.threadId);
-
-                },
-              );
-            },
-          ),
-        ],
-      ),
+                    : thread.content,
+              ),
+              subtitle: Text('Replies: ${thread.repliesCount}'),
+              onTap: () async {
+                final combinedThread = await commentController
+                    .getCombinedThreadById(thread.threadId, thread.userId);
+                Get.toNamed(RouteNamess.addReply,  arguments: combinedThread);
+              },
+            );
+          },
+        ),
+      ]),
     );
   }
 }

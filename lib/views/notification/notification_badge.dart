@@ -16,13 +16,12 @@ class NotificationBadge extends StatelessWidget {
         children: [
           Icon(
             (Icons.favorite_outline),
-            // onPressed: () => Get.to(() => const NotificationsScreen()),
           ),
 
           if (count > 0)
             Positioned(
-              right: 8,
-              top: 8,
+              right: 0,
+              top: 0,
               child: Container(
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(

@@ -33,12 +33,10 @@ class ThreadsCard extends StatelessWidget {
             children: [
               SizedBox(
                 width: context.width * 0.12,
-                // Ensure avatar_url is never null for CircleImage
                 child: CircleImage(url: post.user.avatar_url ?? ''),
               ),
               const SizedBox(width: 10),
               Expanded(
-                // Use Expanded here to allow the column to take remaining space
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -78,14 +76,13 @@ class ThreadsCard extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 10.0),
                         child: ConstrainedBox(
-                          // Constrain the height of the image gallery
                           constraints: BoxConstraints(
                             maxHeight:
                                 context.height *
-                                0.35, // Adjusted max height for images
+                                0.35,
                             minHeight:
                                 context.height *
-                                0.15, // Minimum height for consistency
+                                0.15, 
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(10),
@@ -106,8 +103,8 @@ class ThreadsCard extends StatelessWidget {
                                     onTap: () => Get.toNamed(RouteNamess.showImage , arguments: url),
                                     child: Image.network(
                                       url,
-                                      width:context.width * 0.60, // Example width
-                                      fit: BoxFit.cover, // Cover the box, might crop
+                                      width:context.width * 0.60, 
+                                      fit: BoxFit.cover, 
                                       loadingBuilder: (
                                         context,
                                         child,
@@ -156,7 +153,6 @@ class ThreadsCard extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 10.0),
                         child: ConstrainedBox(
-                          // Constrain the video player's size
                           constraints: BoxConstraints(
                             maxHeight: context.height * 0.40,
                             minHeight: context.height * 0.20,

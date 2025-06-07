@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:thread_app/Route/route_namess.dart';
+import 'package:thread_app/controller/home_controller.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:video_player/video_player.dart';
 import 'package:thread_app/model/combined_thread_post_model.dart';
@@ -10,8 +12,6 @@ class MyThreadsCard extends StatefulWidget {
   final bool isMyPost;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
-  final VoidCallback? onLike;
-  final VoidCallback? onComment;
   final VoidCallback? onShare;
   final VoidCallback? onReport;
   final bool isReplyPage;
@@ -22,8 +22,6 @@ class MyThreadsCard extends StatefulWidget {
     this.isMyPost = false,
     this.onEdit,
     this.onDelete,
-    this.onLike,
-    this.onComment,
     this.onShare,
     this.onReport,
     this.isReplyPage = false,
@@ -34,6 +32,8 @@ class MyThreadsCard extends StatefulWidget {
 }
 
 class _MyThreadsCardState extends State<MyThreadsCard> {
+  final HomeController homeController = Get.find<HomeController>();
+
   VideoPlayerController? _videoController;
   bool _isPlaying = false;
   bool _isVideoInitialized = false;
@@ -52,23 +52,29 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
   }
 
   void _initializeVideo() {
-    if (widget.post.thread.videoUrl != null && widget.post.thread.videoUrl!.isNotEmpty) {
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(widget.post.thread.videoUrl!))
-        ..initialize().then((_) {
-          if (mounted) {
-            setState(() {
-              _isVideoInitialized = true;
-            });
-          }
-        }).catchError((error) {
-          debugPrint('Error initializing video: $error');
-          if (mounted) {
-            setState(() {
-              _isVideoInitialized = false;
-            });
-          }
-        })
-        ..addListener(_videoListener);
+    if (widget.post.thread.videoUrl != null &&
+        widget.post.thread.videoUrl!.isNotEmpty) {
+      _videoController =
+          VideoPlayerController.networkUrl(
+              Uri.parse(widget.post.thread.videoUrl!),
+            )
+            ..initialize()
+                .then((_) {
+                  if (mounted) {
+                    setState(() {
+                      _isVideoInitialized = true;
+                    });
+                  }
+                })
+                .catchError((error) {
+                  debugPrint('Error initializing video: $error');
+                  if (mounted) {
+                    setState(() {
+                      _isVideoInitialized = false;
+                    });
+                  }
+                })
+            ..addListener(_videoListener);
     }
   }
 
@@ -107,13 +113,12 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
                 child: CircleImage(url: widget.post.user.avatar_url ?? ''),
               ),
               const SizedBox(width: 10),
-              
+
               // Main Content Column
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // User Info and Options
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -143,7 +148,7 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
                         ),
                       ],
                     ),
-                    
+
                     // Thread Content
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -152,15 +157,15 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
                         style: const TextStyle(fontSize: 15),
                       ),
                     ),
-                    
+
                     // Media Display
                     if (widget.post.thread.imageUrls.isNotEmpty)
                       _buildImageGallery(),
-                    
-                    if (widget.post.thread.videoUrl != null && 
+
+                    if (widget.post.thread.videoUrl != null &&
                         widget.post.thread.videoUrl!.isNotEmpty)
                       _buildVideoPlayer(),
-                    
+
                     // Interaction Buttons
                     _buildInteractionButtons(),
                   ],
@@ -168,10 +173,15 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
               ),
             ],
           ),
-          
+
           // Divider only if not on reply page
           if (!widget.isReplyPage)
-            const Divider(height: 20, thickness: 0.5, indent: 60, endIndent: 20),
+            const Divider(
+              height: 20,
+              thickness: 0.5,
+              indent: 60,
+              endIndent: 20,
+            ),
         ],
       ),
     );
@@ -185,22 +195,27 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
         if (result == 'delete' && widget.onDelete != null) widget.onDelete!();
         if (result == 'report' && widget.onReport != null) widget.onReport!();
       },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        if (widget.isMyPost)
-          const PopupMenuItem<String>(
-            value: 'edit',
-            child: Text('Edit Post'),
-          ),
-        if (widget.isMyPost)
-          const PopupMenuItem<String>(
-            value: 'delete',
-            child: Text('Delete Post', style: TextStyle(color: Colors.red))),
-        if(!widget.isMyPost)
-          const PopupMenuItem<String>(
-            value: 'report',
-            child: Text('Report Post', style: TextStyle(color: Colors.orange)),
-        ),
-      ],
+      itemBuilder:
+          (BuildContext context) => <PopupMenuEntry<String>>[
+            if (widget.isMyPost)
+              const PopupMenuItem<String>(
+                value: 'edit',
+                child: Text('Edit Post'),
+              ),
+            if (widget.isMyPost)
+              const PopupMenuItem<String>(
+                value: 'delete',
+                child: Text('Delete Post', style: TextStyle(color: Colors.red)),
+              ),
+            if (!widget.isMyPost)
+              const PopupMenuItem<String>(
+                value: 'report',
+                child: Text(
+                  'Report Post',
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+          ],
     );
   }
 
@@ -221,7 +236,10 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
               final url = widget.post.thread.imageUrls[index];
               return Padding(
                 padding: EdgeInsets.only(
-                  right: index == widget.post.thread.imageUrls.length - 1 ? 0 : 8.0,
+                  right:
+                      index == widget.post.thread.imageUrls.length - 1
+                          ? 0
+                          : 8.0,
                 ),
                 child: Image.network(
                   url,
@@ -234,19 +252,24 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
                       color: Colors.grey[200],
                       child: Center(
                         child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
+                          value:
+                              loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
                         ),
                       ),
                     );
                   },
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: context.width * 0.75,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.broken_image, color: Colors.grey),
-                  ),
+                  errorBuilder:
+                      (context, error, stackTrace) => Container(
+                        width: context.width * 0.75,
+                        color: Colors.grey[200],
+                        child: const Icon(
+                          Icons.broken_image,
+                          color: Colors.grey,
+                        ),
+                      ),
                 ),
               );
             },
@@ -326,32 +349,42 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
   Widget _buildInteractionButtons() {
     return Row(
       children: [
-        // Like Button
         Row(
           children: [
             IconButton(
-              onPressed: widget.onLike,
+              onPressed: () {
+               
+                homeController.toggleLike(widget.post.thread.threadId);
+              },
               icon: Icon(
-                widget.post.isLikedByCurrentUser 
-                    ? Icons.favorite 
+                widget
+                        .post
+                        .isLikedByCurrentUser
+                    ? Icons.favorite
                     : Icons.favorite_outline,
                 size: 18,
-                color: widget.post.isLikedByCurrentUser 
-                    ? Colors.red 
-                    : Colors.grey[600],
+                color:
+                    widget
+                            .post
+                            .isLikedByCurrentUser
+                        ? Colors.red
+                        : Colors.grey[600],
               ),
             ),
             const SizedBox(width: 4),
             Text('${widget.post.thread.likesCount}'),
           ],
         ),
+
         const SizedBox(width: 15),
-        
+
         // Comment Button
         Row(
           children: [
             IconButton(
-              onPressed: widget.onComment,
+              onPressed: () {
+                Get.toNamed(RouteNamess.addReply, arguments: widget.post);
+              },
               icon: const Icon(Icons.chat_bubble_outline, size: 18),
             ),
             const SizedBox(width: 4),
@@ -359,13 +392,13 @@ class _MyThreadsCardState extends State<MyThreadsCard> {
           ],
         ),
         const SizedBox(width: 15),
-        
+
         // Share Button
         IconButton(
           onPressed: widget.onShare,
           icon: const Icon(Icons.send_outlined, size: 18),
         ),
-        
+
         const Spacer(),
       ],
     );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:thread_app/Route/route_namess.dart';
 import 'package:thread_app/controller/notification_controller.dart';
+import 'package:thread_app/controller/reply_controller.dart';
+import 'package:thread_app/model/combined_thread_post_model.dart';
 import 'package:thread_app/model/notification_model.dart';
 import 'package:thread_app/views/notification/notification_tile.dart';
-
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -11,6 +13,7 @@ class NotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<NotificationController>();
+    final commentController = Get.put(CommentController());
 
     return Scaffold(
       appBar: AppBar(
@@ -43,7 +46,7 @@ class NotificationsScreen extends StatelessWidget {
               final notification = snapshot.data![index];
               return NotificationTile(
                 notification: notification,
-                onTap: () => _handleNotificationTap(notification),
+                onTap: () => _handleNotificationTap(notification, commentController),
               );
             },
           );
@@ -52,27 +55,39 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 
-  void _handleNotificationTap(NotificationModel notification) {
+  Future<void> _handleNotificationTap(
+      NotificationModel notification, CommentController commentController) async {
     final controller = Get.find<NotificationController>();
-    
-    // Mark as read when tapped
+
     if (!notification.read) {
       controller.markAsRead(notification.id);
     }
 
-    // Handle navigation based on notification type
     switch (notification.type) {
       case 'like':
       case 'comment':
-        if (notification.threadId != null) {
-          Get.toNamed('/thread/${notification.threadId}');
+        if (notification.threadId != null ) {
+          final combinedThread = await commentController.getCombinedThreadById(
+            notification.threadId!,
+            notification.recipientId,
+          );
+
+          if (combinedThread != null) {
+            Get.toNamed(
+              RouteNamess.addReply,
+              arguments: combinedThread,
+            );
+          } else {
+            debugPrint('Thread not found');
+          }
         }
         break;
+
       case 'follow':
         Get.toNamed('/profile/${notification.senderId}');
         break;
+
       case 'report':
-        // Handle report notification
         break;
     }
   }

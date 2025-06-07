@@ -5,11 +5,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:thread_app/controller/home_controller.dart';
 import 'package:thread_app/controller/notification_controller.dart';
 import 'package:thread_app/controller/profile_controller.dart';
 
 import 'package:thread_app/model/combined_comment_model.dart';
+import 'package:thread_app/model/combined_thread_post_model.dart';
 import 'package:thread_app/model/comment_model.dart';
+import 'package:thread_app/model/threads_model.dart';
 import 'package:thread_app/model/user_model.dart';
 import 'package:thread_app/utils/helper.dart';
 
@@ -34,7 +37,7 @@ class CommentController extends GetxController {
 
   final Map<String, UserModel> _userCache = {};
   String _currentThreadId = '';
-
+HomeController _homeController = Get.find<HomeController>();
 
   // Stream subscriptions to manage
   StreamSubscription<QuerySnapshot>? _currentCommentsSubscription;
@@ -62,6 +65,52 @@ class CommentController extends GetxController {
     _startCommentListener();
   }
 
+
+Future<CombinedThreadPostModel?> getCombinedThreadById(
+    String threadId, String userId ) async {
+  try {
+    // Fetch the thread document
+    final threadDoc =
+        await _firestore.collection('threads').doc(threadId).get();
+
+    if (!threadDoc.exists) {
+      debugPrint('Thread $threadId does not exist.');
+      return null;
+    }
+
+    final thread = ThreadModel.fromFirestore(threadDoc);
+
+    // Fetch user data (from cache or Firestore)
+    UserModel? user = await _homeController.getUserData(userId);
+    user ??= UserModel(
+      userId: userId,
+      name: 'Unknown User',
+      email: 'N/A',
+      avatar_url: '',
+    );
+
+    // Check like status
+    bool hasLiked = false;
+    if (userId != null) {
+      final likeDoc = await _firestore
+          .collection('threads')
+          .doc(threadId)
+          .collection('likes')
+          .doc(userId)
+          .get();
+      hasLiked = likeDoc.exists;
+    }
+
+    return CombinedThreadPostModel(
+      thread: thread,
+      user: user,
+      isLikedByCurrentUser: hasLiked,
+    );
+  } catch (e) {
+    debugPrint('Error fetching CombinedThreadPostModel: $e');
+    return null;
+  }
+}
   void _startCommentListener() {
     isLoading.value = true;
     comments.clear();

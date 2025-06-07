@@ -38,7 +38,7 @@ class NotificationController extends GetxController {
     String? replyId,
     String? imageUrl,
   }) async {
-    if (recipientId == senderId) return; // Don't notify yourself
+    if (recipientId == senderId) return; 
 
     final message = _generateMessage(type, senderId);
     
