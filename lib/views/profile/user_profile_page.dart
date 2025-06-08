@@ -14,7 +14,7 @@ class ShowProfile extends StatefulWidget {
 }
 
 class _ShowProfileState extends State<ShowProfile> {
-  final String userId = 'g8PeA8nHjIcOL3O3FTafYp18A6c2';
+  final String userId = Get.arguments;
 
   late final UserProfileController controller;
 

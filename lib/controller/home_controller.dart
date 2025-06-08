@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:thread_app/controller/notification_controller.dart';
 import 'package:thread_app/model/combined_thread_post_model.dart';
 import 'package:thread_app/model/threads_model.dart';
 import 'package:thread_app/model/user_model.dart';
@@ -9,7 +10,8 @@ import 'dart:async';
 import 'package:thread_app/utils/helper.dart';
 
 class HomeController extends GetxController {
-  final RxList<CombinedThreadPostModel> threads = <CombinedThreadPostModel>[].obs;
+  final RxList<CombinedThreadPostModel> threads =
+      <CombinedThreadPostModel>[].obs;
   final RxBool isLoading = true.obs;
   final RxBool hasMore = true.obs;
   final int batchSize = 15; // Adjust as needed
@@ -18,10 +20,8 @@ class HomeController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Map<String, UserModel> _userCache = {};
   String? _currentUserId;
-
   StreamSubscription? _threadsSubscription;
   DocumentSnapshot? _lastDocument;
-
 
   @override
   void onClose() {
@@ -53,7 +53,6 @@ class HomeController extends GetxController {
       // Initial load of all threads
       await _loadMoreThreads();
 
-      // Set up real-time listener for changes
       _threadsSubscription = _firestore
           .collection('threads')
           .orderBy('createdAt', descending: true)
@@ -70,7 +69,7 @@ class HomeController extends GetxController {
     if (!hasMore.value || isLoading.value) return;
 
     isLoading.value = true;
-    
+
     try {
       Query query = _firestore
           .collection('threads')
@@ -95,24 +94,28 @@ class HomeController extends GetxController {
       for (final doc in snapshot.docs) {
         final thread = ThreadModel.fromFirestore(doc);
         final user = await getUserData(thread.userId);
-        
+
         if (user != null) {
           final hasLiked = await _checkIfLiked(thread.threadId);
-          newThreads.add(CombinedThreadPostModel(
-            thread: thread,
-            user: user,
-            isLikedByCurrentUser: hasLiked,
-          ));
+          newThreads.add(
+            CombinedThreadPostModel(
+              thread: thread,
+              user: user,
+              isLikedByCurrentUser: hasLiked,
+            ),
+          );
         }
       }
 
       threads.addAll(newThreads);
       isLoading.value = false;
-
     } catch (e) {
       isLoading.value = false;
       debugPrint('Error loading more threads: $e');
-      showCustomSnackBar(title: 'Error', message: 'Failed to load more threads: $e');
+      showCustomSnackBar(
+        title: 'Error',
+        message: 'Failed to load more threads: $e',
+      );
     }
   }
 
@@ -128,15 +131,17 @@ class HomeController extends GetxController {
       }
 
       await Future.wait(processingFutures);
-      
+
       // Sort by createdAt after updates
       threads.sort((a, b) => b.thread.createdAt.compareTo(a.thread.createdAt));
-      
+
       debugPrint('Threads updated in real-time. Total: ${threads.length}');
     } catch (e) {
       debugPrint('Error processing thread updates: $e');
       showCustomSnackBar(
-          title: 'Error', message: 'Failed to process updates: $e');
+        title: 'Error',
+        message: 'Failed to process updates: $e',
+      );
     }
   }
 
@@ -184,14 +189,15 @@ class HomeController extends GetxController {
 
   Future<bool> _checkIfLiked(String threadId) async {
     if (_currentUserId == null) return false;
-    
+
     try {
-      final likeDoc = await _firestore
-          .collection('threads')
-          .doc(threadId)
-          .collection('likes')
-          .doc(_currentUserId)
-          .get();
+      final likeDoc =
+          await _firestore
+              .collection('threads')
+              .doc(threadId)
+              .collection('likes')
+              .doc(_currentUserId)
+              .get();
       return likeDoc.exists;
     } catch (e) {
       debugPrint('Error checking like status for thread $threadId: $e');
@@ -209,7 +215,10 @@ class HomeController extends GetxController {
     } catch (e) {
       isLoading.value = false;
       debugPrint('Refresh error: $e');
-      showCustomSnackBar(title: 'Error', message: 'Failed to refresh threads: $e');
+      showCustomSnackBar(
+        title: 'Error',
+        message: 'Failed to refresh threads: $e',
+      );
     }
   }
 
@@ -254,7 +263,10 @@ class HomeController extends GetxController {
 
   Future<void> toggleLike(String threadID) async {
     if (_currentUserId == null) {
-      showCustomSnackBar(title: 'Error', message: 'You must be logged in to like a thread.');
+      showCustomSnackBar(
+        title: 'Error',
+        message: 'You must be logged in to like a thread.',
+      );
       return;
     }
 
@@ -283,9 +295,14 @@ class HomeController extends GetxController {
       final index = threads.indexWhere((t) => t.thread.threadId == threadID);
       if (index != -1) {
         final currentThread = threads[index];
-        final newLikesCount = currentThread.isLikedByCurrentUser
-            ? currentThread.thread.likesCount - 1
-            : currentThread.thread.likesCount + 1;
+        var newLikesCount;
+        if (currentThread.isLikedByCurrentUser) {
+          newLikesCount = currentThread.thread.likesCount - 1;
+        } else {
+          newLikesCount = currentThread.thread.likesCount + 1;
+          Get.put(NotificationController()).sendNotification(senderId: _currentUserId! , recipientId: currentThread.user.userId , senderName: currentThread.user.name , type:"like" , imageUrl : currentThread.user.avatar_url , threadId : currentThread.thread.threadId , );
+          
+        }
 
         threads[index] = currentThread.copyWith(
           thread: currentThread.thread.copyWith(likesCount: newLikesCount),

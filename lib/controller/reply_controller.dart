@@ -205,13 +205,14 @@ Future<CombinedThreadPostModel?> getCombinedThreadById(
 
 
        if (threadOwnerId != null && threadOwnerId != currentUser.uid) {
-      await Get.find<NotificationController>().sendNotification(
+      await Get.put(NotificationController()).sendNotification(
         recipientId: threadOwnerId,
         senderId: currentUser.uid,
+        senderName: await _getCurrentUserName()?? "",
         type: 'comment',
         threadId: _currentThreadId,
         replyId: commentRef.id,
-        imageUrl: await _getCurrentUserImageUrl(), // Add this method to get current user's image
+        imageUrl: await _getCurrentUserImageUrl(), 
       );
        }
 
@@ -385,6 +386,11 @@ Future<CombinedThreadPostModel?> getCombinedThreadById(
   if (_auth.currentUser == null) return null;
   final userDoc = await _firestore.collection('users').doc(_auth.currentUser!.uid).get();
   return userDoc.data()?['avatarUrl'];
+}
+  Future<String?> _getCurrentUserName() async {
+  if (_auth.currentUser == null) return null;
+  final userDoc = await _firestore.collection('users').doc(_auth.currentUser!.uid).get();
+  return userDoc.data()?['name'];
 }
 
   void fetchCurrentUserReplies() {

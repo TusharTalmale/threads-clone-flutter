@@ -2,15 +2,13 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart'; // This seems to be for Realtime Database, make sure you need it if you're primarily using Firestore.
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:thread_app/Services/navigation_service.dart';
-import 'package:thread_app/utils/helper.dart'; 
+import 'package:thread_app/utils/helper.dart';
 
 class ThreadController extends GetxController {
   final TextEditingController addtextEditingController = TextEditingController(
@@ -48,33 +46,26 @@ class ThreadController extends GetxController {
 
   Future<void> pickImages() async {
     loading.value = true;
-    if (video.value != null) {
-      showCustomSnackBar(
-        title: 'Cannot add images',
-        message: 'Clear video first to add images.',
-      );
-      loading.value = false;
-      return;
-    }
     try {
       final List<XFile> pickedFiles = await _picker.pickMultiImage(
         imageQuality: 70,
         maxWidth: 800,
       );
       if (pickedFiles.isNotEmpty) {
-        final newImages = [...images.value, ...pickedFiles];
-        if (newImages.length > 3) {
-          showCustomSnackBar(
-            title: 'Limit Reached',
-            message: 'You can only add up to 3 images.',
-          );
-          images.value = newImages.sublist(
-            0,
-            3,
-          );
-        } else {
-          images.value = newImages;
+        // Filter out images if adding more than 3
+        final List<XFile> newImages = [...images.value];
+        for (var file in pickedFiles) {
+          if (newImages.length < 3) {
+            newImages.add(file);
+          } else {
+            showCustomSnackBar(
+              title: 'Image Limit Reached',
+              message: 'You can only add up to 3 images. Some images were not added.',
+            );
+            break; // Stop adding if limit is reached
+          }
         }
+        images.value = newImages;
         showCustomSnackBar(
           title: "Success",
           message: "Images loaded successfully!",
@@ -90,10 +81,10 @@ class ThreadController extends GetxController {
 
   Future<void> pickVideo() async {
     loading.value = true;
-    if (images.isNotEmpty) {
+    if (video.value != null) {
       showCustomSnackBar(
-        title: 'Cannot add video',
-        message: 'Clear images first to add a video.',
+        title: 'Video Already Selected',
+        message: 'You can only add one video. Clear the existing video first.',
       );
       loading.value = false;
       return;
@@ -122,10 +113,10 @@ class ThreadController extends GetxController {
 
   Future<void> takePhoto() async {
     loading.value = true;
-    if (video.value != null) {
+    if (images.length >= 3) {
       showCustomSnackBar(
-        title: 'Cannot add photos',
-        message: 'Clear video first to take a photo.',
+        title: 'Image Limit Reached',
+        message: 'You can only add up to 3 images. Clear some existing images first.',
       );
       loading.value = false;
       return;
@@ -137,18 +128,11 @@ class ThreadController extends GetxController {
         maxWidth: 800,
       );
       if (pickedFile != null) {
-        if (images.length < 3) {
-          images.add(pickedFile);
-          showCustomSnackBar(
-            title: "Success",
-            message: "Photo taken successfully!",
-          );
-        } else {
-          showCustomSnackBar(
-            title: 'Limit Reached',
-            message: 'You can only add up to 3 images.',
-          );
-        }
+        images.add(pickedFile);
+        showCustomSnackBar(
+          title: "Success",
+          message: "Photo taken successfully!",
+        );
       }
     } catch (e) {
       debugPrint('Error taking photo: $e');
@@ -160,10 +144,10 @@ class ThreadController extends GetxController {
 
   Future<void> recordVideo() async {
     loading.value = true;
-    if (images.isNotEmpty) {
+    if (video.value != null) {
       showCustomSnackBar(
-        title: 'Cannot add video',
-        message: 'Clear images first to record a video.',
+        title: 'Video Already Selected',
+        message: 'You can only add one video. Clear the existing video first.',
       );
       loading.value = false;
       return;
@@ -231,13 +215,13 @@ class ThreadController extends GetxController {
       return null;
     } catch (e) {
       debugPrint('General Error uploading $path: $e');
-    
       return null;
     }
   }
 
-  bool get canPost =>
-      content.value.isNotEmpty || images.isNotEmpty || video.value != null;
+  // Allow posting if there's content, images, OR a video.
+  // The 'canPost' getter already supports this logic, so no changes needed here.
+  bool get canPost => content.value.isNotEmpty || images.isNotEmpty || video.value != null;
 
   Future<void> postThread() async {
     if (!canPost) {
@@ -270,6 +254,7 @@ class ThreadController extends GetxController {
       List<String> imageUrls = [];
       String? videoUrl;
 
+      // Upload images
       for (int i = 0; i < images.length; i++) {
         final XFile imageFile = images[i];
         final String imagePath =
@@ -285,6 +270,7 @@ class ThreadController extends GetxController {
         }
       }
 
+      // Upload video if present
       if (video.value != null) {
         final XFile videoFile = video.value!;
         final String videoPath =
@@ -323,9 +309,6 @@ class ThreadController extends GetxController {
       loading.value = false;
     }
   }
-
-  
-
 
   // Method to increase reply count
   Future<void> increaseReplyCount(String threadId) async {

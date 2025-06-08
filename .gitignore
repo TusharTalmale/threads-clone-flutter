@@ -56,3 +56,4 @@ firebase-debug.log
 *.json
 /keys/
 /credentials/
+/android/app/google-services.json

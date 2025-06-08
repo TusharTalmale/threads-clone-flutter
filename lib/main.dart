@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
@@ -12,7 +11,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:thread_app/Route/route_namess.dart';
 import 'package:thread_app/Services/storage_service.dart';
 import 'package:thread_app/controller/auth_controller.dart';
-import 'package:thread_app/controller/home_controller.dart';
 import 'package:thread_app/controller/notification_controller.dart';
 import 'package:thread_app/firebase_options.dart';
 import 'package:thread_app/theme/themedata.dart';
@@ -46,7 +44,6 @@ void main() async {
     
     // Initialize controllers after all services are ready
     Get.put(AuthController(), permanent: true);
-    Get.put(NotificationController(), permanent: true);
     // Get.put(HomeController(), permanent: true);
     
     // Run app with DevicePreview in debug mode

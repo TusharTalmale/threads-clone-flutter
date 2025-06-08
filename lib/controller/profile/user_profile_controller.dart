@@ -35,7 +35,7 @@ class UserProfileController extends GetxController {
   // Stream subscriptions
   StreamSubscription? _userProfileSubscription;
   StreamSubscription? _userPostsSubscription;
-  StreamSubscription? _userRepliesSubscription; // For replies made by this user
+  StreamSubscription? _userRepliesSubscription; 
 
   // Constructor to receive the userId
   UserProfileController({required this.targetUserId});
@@ -43,12 +43,9 @@ class UserProfileController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Start listening to the target user's profile data
     listenToUserProfile();
-    // Start listening to the target user's threads
     listenToUserThreads();
-    // Start listening to the target user's replies
-    // listenToUserReplies();r
+    
   }
 
   @override
@@ -62,7 +59,7 @@ class UserProfileController extends GetxController {
 
   // --- Real-time Listener for User Profile Data ---
   void listenToUserProfile() {
-    _userProfileSubscription?.cancel(); // Cancel any existing subscription
+    _userProfileSubscription?.cancel(); 
     userLoading.value = true;
     errorMessage.value = '';
 
@@ -75,25 +72,22 @@ class UserProfileController extends GetxController {
           if (userDoc.exists) {
             user.value = UserModel.fromFirestore(userDoc);
           } else {
-            // Fallback if the user document doesn't exist (e.g., deleted user, or never created a profile)
             User? authUser = _auth.currentUser;
             if (authUser != null && authUser.uid == targetUserId) {
-              // If it's the current authenticated user viewing their own profile, use Auth data
               user.value = UserModel(
                 userId: authUser.uid,
                 name: authUser.displayName ?? 'No Name',
                 email: authUser.email ?? 'N/A',
                 avatar_url: authUser.photoURL,
-                description: '', // Default empty description
+                description: '', 
               );
             } else {
-              // Default for any other user not found in 'users' collection
               user.value = UserModel(
                 userId: targetUserId,
                 name: 'Unknown User',
                 email: 'N/A',
                 avatar_url: '',
-                description: '', // Default empty description
+                description: '', 
               );
               errorMessage.value = 'Profile data not found for this user.';
             }
@@ -108,20 +102,20 @@ class UserProfileController extends GetxController {
 
   // --- Real-time Listener for User's Threads ---
   void listenToUserThreads() {
-    _userPostsSubscription?.cancel(); // Cancel any existing subscription
+    _userPostsSubscription?.cancel(); 
     postLoading.value = true;
-    posts.clear(); // Clear existing threads
+    posts.clear(); 
 
     _userPostsSubscription = _firestore
         .collection('threads')
-        .where('userId', isEqualTo: targetUserId) // Filter by the target user's ID
+        .where('userId', isEqualTo: targetUserId) 
         .orderBy('createdAt', descending: true)
-        .snapshots() // Listen for real-time updates
+        .snapshots() 
         .listen((QuerySnapshot threadSnapshot) async {
           debugPrint('Real-time update received for user threads. Changes: ${threadSnapshot.docChanges.length}');
 
           List<CombinedThreadPostModel> fetchedPosts = [];
-          final String? currentViewerId = _auth.currentUser?.uid; // ID of the currently logged-in user (the viewer)
+          final String? currentViewerId = _auth.currentUser?.uid; 
 
           // Ensure the target user's profile is loaded before combining
           UserModel? targetUserProfile = user.value;
@@ -140,7 +134,7 @@ class UserProfileController extends GetxController {
                 description: '',
               );
             }
-            user.value = targetUserProfile; // Update the observable profile too
+            user.value = targetUserProfile; 
           }
 
           // Process each document change
@@ -164,7 +158,7 @@ class UserProfileController extends GetxController {
             }
 
             // Ensure userModel is not null before creating CombinedThreadPostModel
-            UserModel userModelForPost = targetUserProfile!; // Use the fetched target user's profile
+            UserModel userModelForPost = targetUserProfile!; 
 
             final combinedModel = CombinedThreadPostModel(
               thread: thread,
@@ -176,7 +170,7 @@ class UserProfileController extends GetxController {
             if (docChange.type == DocumentChangeType.added) {
               // Insert at the correct position to maintain order by timestamp (newest at top)
               int insertIndex = posts.indexWhere((element) =>
-                  element.thread.createdAt.isBefore(thread.createdAt) // 'isBefore' because we want newest first
+                  element.thread.createdAt.isBefore(thread.createdAt) 
               );
               if (insertIndex == -1) {
                 // If it's the oldest or list is empty, add to end (which is effectively top in reverse order)
@@ -187,7 +181,7 @@ class UserProfileController extends GetxController {
             } else if (docChange.type == DocumentChangeType.modified) {
               final index = posts.indexWhere((post) => post.thread.threadId == thread.threadId);
               if (index != -1) {
-                posts[index] = combinedModel; // Replace the modified item
+                posts[index] = combinedModel; 
               }
             } else if (docChange.type == DocumentChangeType.removed) {
               posts.removeWhere((post) => post.thread.threadId == thread.threadId);
@@ -209,7 +203,7 @@ class UserProfileController extends GetxController {
 
     // This query fetches replies made *by* the targetUserId across all threads
     _userRepliesSubscription = _firestore
-        .collectionGroup('replies') // Queries all 'replies' subcollections
+        .collectionGroup('replies') 
         .where('userId', isEqualTo: targetUserId)
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -240,24 +234,22 @@ class UserProfileController extends GetxController {
           for (var docChange in replySnapshot.docChanges) {
             final replyData = docChange.doc.data() as Map<String, dynamic>;
             
-            // Create a dummy ThreadModel to represent the reply for display in ThreadsCard
-            // This allows us to reuse CombinedThreadPostModel and ThreadsCard.
             final ThreadModel replyAsThread = ThreadModel(
-              threadId: docChange.doc.id, // Use reply ID as threadId for this representation
+              threadId: docChange.doc.id, 
               userId: targetUserId,
               content: replyData['content'] ?? 'No content',
-              imageUrls: [], // Assuming replies don't have images/videos in this context
+              imageUrls: [], 
               videoUrl: null,
-              likesCount: replyData['likesCount'] ?? 0, // Assuming replies can have likes
-              repliesCount: 0, // Replies usually don't have nested replies in this view
+              likesCount: replyData['likesCount'] ?? 0, 
+              repliesCount: 0, 
               createdAt: (replyData['createdAt'] as Timestamp).toDate(),
               updatedAt: (replyData['updatedAt'] as Timestamp?),
             );
 
-            bool isLiked = false; // Implement like check for replies if your replies also have likes
+            bool isLiked = false; 
 
             final combinedReplyModel = CombinedThreadPostModel(
-              thread: replyAsThread, // This represents the reply
+              thread: replyAsThread, 
               user: targetUserProfile!,
               isLikedByCurrentUser: isLiked,
             );
@@ -291,14 +283,12 @@ class UserProfileController extends GetxController {
 
   // Helper function to call from onRefresh in UI
   Future<void> refreshProfileAndThreads() async {
-    // Calling these will trigger the stream listeners to re-evaluate/re-fetch
     listenToUserProfile();
     listenToUserThreads();
     listenToUserReplies();
   }
 
   // --- Thread Action Methods (can be central like in HomeController, or here) ---
-  // This controller provides its own toggleLike as it's specifically managing this profile's view.
   Future<void> toggleLike(String threadID) async {
     final User? currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -340,41 +330,4 @@ class UserProfileController extends GetxController {
     }
   }
 
-  // Method to edit an existing post (ownership check required in real app, and UI for this)
-  Future<void> editPost(String threadId, String newContent, {List<String>? newImageUrls, String? newVideoUrl}) async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      Get.snackbar('Error', 'You must be logged in to edit posts.', snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-    // Verify ownership
-    final threadDoc = await _firestore.collection('threads').doc(threadId).get();
-    if (!threadDoc.exists || threadDoc.data()?['userId'] != currentUser.uid) {
-      Get.snackbar('Error', 'You do not have permission to edit this post.', snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-
-    // TODO: Implement the actual update logic, including Storage if media changes
-    // This part would involve re-uploading, deleting old, etc.
-    Get.snackbar('Info', 'Edit post functionality is not fully implemented in ProfileController for now.', snackPosition: SnackPosition.BOTTOM);
-  }
-
-  // Method to delete an existing post (ownership check required in real app, and UI for this)
-  Future<void> deletePost(String threadId) async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      Get.snackbar('Error', 'You must be logged in to delete posts.', snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-
-    // Verify ownership
-    final threadDoc = await _firestore.collection('threads').doc(threadId).get();
-    if (!threadDoc.exists || threadDoc.data()?['userId'] != currentUser.uid) {
-      Get.snackbar('Error', 'You do not have permission to delete this post.', snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-
-    // TODO: Implement the actual delete logic, including deleting subcollections and storage files
-    Get.snackbar('Info', 'Delete post functionality is not fully implemented in ProfileController for now.', snackPosition: SnackPosition.BOTTOM);
-  }
 }

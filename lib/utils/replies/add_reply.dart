@@ -11,7 +11,7 @@ import 'package:thread_app/widgets/image_circle.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class ReplyPage extends StatefulWidget {
-  final CombinedThreadPostModel post = Get.arguments ;
+  final CombinedThreadPostModel post = Get.arguments;
 
   ReplyPage({super.key});
 
@@ -56,60 +56,34 @@ class _ReplyPageState extends State<ReplyPage> {
       ),
       title: const Text("Replies"),
       actions: [
-        // TextButton(
-        //   onPressed: _addComment,
-        //   child: Obx(
-        //     () =>
-        //         controller.isLoading.value
-        //             ? const SizedBox(
-        //               height: 16,
-        //               width: 16,
-        //               child: CircularProgressIndicator(),
-        //             )
-        //             : Text(
-        //               "Reply",
-        //               style: TextStyle(
-        //                 fontWeight:
-        //                     controller.commentTextController.text.isNotEmpty
-        //                         ? FontWeight.bold
-        //                         : FontWeight.normal,
-        //               ),
-        //             ),
-        //   ),
-        // ),
+        TextButton(
+          onPressed: _addComment,
+          child: Obx(
+            () =>
+                controller.isLoading.value
+                    ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(  color: Colors.blueAccent,),
+                    )
+                    : Text(
+                      "Reply",
+                      style:
+                          controller.commentTextController.text.isNotEmpty
+                              ? TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blueAccent,
+                                fontSize: 18,
+                              )
+                              : TextStyle(
+                                fontWeight: FontWeight.normal,
+                                color: Colors.grey,
+                                fontSize: 18,
+                              ),
+                    ),
+          ),
+        ),
 
-        Obx(() {
-            if ( controller.isLoading.value == true) {
-              return const SizedBox(
-                height: 16,
-                width: 16,
-                child: CircularProgressIndicator.adaptive(
-                ),
-              );
-            } else {
-              return TextButton(
-                onPressed: controller.commentTextController.text.isNotEmpty
-
-                    ?  _addComment
-                    : null,
-                style: TextButton.styleFrom(
-                  foregroundColor: threadController.canPost
-                      ? Colors.blueAccent
-                      : Colors.grey,
-                ),
-                child: Text(
-                  'Reply',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: controller.commentTextController.text.isNotEmpty
-                        ? Colors.blueAccent
-                        : Colors.grey,
-                  ),
-                ),
-              );
-            }
-          }),
       ],
     );
   }
@@ -248,7 +222,6 @@ class _ReplyPageState extends State<ReplyPage> {
     if (controller.commentTextController.text.isNotEmpty) {
       controller.addComment();
       threadController.increaseReplyCount(widget.post.thread.threadId);
-
     }
   }
 

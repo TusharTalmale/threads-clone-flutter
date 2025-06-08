@@ -5,6 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thread_app/Route/route_namess.dart';
 import 'package:thread_app/Services/storage_service.dart';
 import 'package:thread_app/utils/helper.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+
 
 class AuthController extends GetxController {
   var registerLoading = false.obs;
@@ -117,10 +120,7 @@ class AuthController extends GetxController {
       showSnackBar("Login Failed", errorMessage);
     } catch (e) {
       loginLoading.value = false;
-      showSnackBar(
-        "Login Failed",
-        "An unexpected error occurred: ${e.toString()}",
-      );
+    
     }
   }
 
@@ -141,6 +141,64 @@ class AuthController extends GetxController {
       showSnackBar("Logout Failed", "Please try again. Error: ${e.toString()}");
     }
   }
+
+
+Future<void> loginWithGoogle() async {
+  try {
+    loginLoading.value = true;
+
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+    if (googleUser == null) {
+      loginLoading.value = false;
+      showSnackBar("Cancelled", "Google sign-in was cancelled.");
+      return;
+    }
+
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final UserCredential userCredential =
+        await _auth.signInWithCredential(credential);
+    loginLoading.value = false;
+
+    final User? user = userCredential.user;
+    if (user != null) {
+      // Check if user exists in Firestore
+      final docRef = _firestore.collection('users').doc(user.uid);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        // Create profile for first-time login via Google
+        await docRef.set({
+          'userId': user.uid,
+          'name': user.displayName ?? "",
+          'email': user.email ?? "",
+          'description': null,
+          'avatarId': null,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await StorageService.saveUserSession({
+        'uid': user.uid,
+        'email': user.email,
+        'name': user.displayName ?? "",
+      });
+
+      Get.offAllNamed(RouteNamess.home);
+    }
+  } catch (e) {
+    loginLoading.value = false;
+    showSnackBar("Google Login Failed", e.toString());
+  }
+}
+Future<void> registerWithGoogle() async {
+  await loginWithGoogle();
+}
 
   // Example of fetching a user's profile
   Future<Map<String, dynamic>?> getUserProfile(String uid) async {

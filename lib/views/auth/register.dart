@@ -21,14 +21,15 @@ class _RegisterState extends State<Register> {
     text: "",
   );
   AuthController controller = Get.put(AuthController());
-@override
-void dispose(){
-  nameController.dispose();
-  emailController.dispose();
-passController.dispose();
-confirmPassController.dispose();
-  super.dispose();
-}
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passController.dispose();
+    confirmPassController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -161,7 +162,7 @@ confirmPassController.dispose();
                                 : () {
                                   if (_form.currentState!.validate()) {
                                     controller.register(
-                                       nameController.text.trim(),
+                                      nameController.text.trim(),
                                       emailController.text.trim(),
                                       confirmPassController.text.trim(),
                                     );
@@ -195,8 +196,47 @@ confirmPassController.dispose();
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: const [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text("OR"),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        controller.registerWithGoogle();
+                      },
+                      icon: Image.asset(
+                        "assets/images/googlelogo.png",
 
+                        height: 24,
+                        width: 24,
+                      ),
+                      label: const Text(
+                        "Continue with Google",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        side: BorderSide(color: Colors.grey.shade400),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+SizedBox(height: 20,),
                   // Link to Login Page
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

@@ -3,26 +3,28 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class NotificationModel {
   final String id; // Notification document ID
   final String recipientId; // The user ID who receives the notification
-  final String senderId; // The user ID who triggered the notification (e.g., liker, commenter)
-  final String type; // 'like', 'comment', 'follow', 'report'
-  final String? threadId; // ID of the thread if applicable (for likes/comments/reports)
-  final String? replyId; // ID of the reply if applicable (for comments)
-  final String message; // A custom message for the notification
-  final String? imageUrl; // Optional: URL of an image associated with the notification (e.g., sender's avatar, thread image)
+  final String senderId;  
+  final String senderName;
+  final String type; 
+  final String? threadId; 
+  final String? replyId;
+  final String message;
+  final String? imageUrl; 
   final Timestamp timestamp;
-  final bool read; // Whether the user has viewed this notification
+  final bool read; 
 
   NotificationModel({
     required this.id,
     required this.recipientId,
     required this.senderId,
+    required this.senderName,
     required this.type,
     this.threadId,
     this.replyId,
     required this.message,
     this.imageUrl,
     required this.timestamp,
-    this.read = false, // Default to unread
+    this.read = false, 
   });
 
   factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
@@ -31,6 +33,7 @@ class NotificationModel {
       id: doc.id,
       recipientId: data['recipientId'] ?? '',
       senderId: data['senderId'] ?? '',
+      senderName: data['senderName'] ?? '',
       type: data['type'] ?? '',
       threadId: data['threadId'],
       replyId: data['replyId'],
@@ -45,6 +48,7 @@ class NotificationModel {
     return {
       'recipientId': recipientId,
       'senderId': senderId,
+      'senderName':senderName,
       'type': type,
       'threadId': threadId,
       'replyId': replyId,
@@ -60,6 +64,7 @@ class NotificationModel {
     String? id,
     String? recipientId,
     String? senderId,
+    String? senderName,
     String? type,
     String? threadId,
     String? replyId,
@@ -72,6 +77,7 @@ class NotificationModel {
       id: id ?? this.id,
       recipientId: recipientId ?? this.recipientId,
       senderId: senderId ?? this.senderId,
+      senderName: senderName ?? this.senderName,
       type: type ?? this.type,
       threadId: threadId ?? this.threadId,
       replyId: replyId ?? this.replyId,

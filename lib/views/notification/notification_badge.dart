@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:thread_app/controller/notification_controller.dart';
-import 'package:thread_app/views/notification/notification.dart';
 
 class NotificationBadge extends StatelessWidget {
   const NotificationBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<NotificationController>();
+    final controller = Get.put(NotificationController());
     
     return Obx(() {
       final count = controller.unreadCount.value;
